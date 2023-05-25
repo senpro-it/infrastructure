@@ -1,3 +1,6 @@
+# 0.0.3 (`2023-05-25`)
+- upd: networking (host) & k3s-cluster
+
 # 0.0.2 (`2023-05-25`)
 - add: k3s-cluster services
 
