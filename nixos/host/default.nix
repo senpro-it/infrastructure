@@ -13,7 +13,7 @@
       keyMap = "de";
     };
     environment = {
-      systemPackages = with pkgs; [ exa ];
+      systemPackages = with pkgs; [ exa git ];
     };
     i18n = {
       defaultLocale = "de_DE.UTF-8";

@@ -2,6 +2,6 @@
 
 {
 
-  imports = [ ./host ];
+  imports = [ ./host ./k3s-cluster ];
 
 }
