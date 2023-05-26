@@ -48,6 +48,24 @@ with lib;
             - `server.address` is required.
           '';
         };
+        nfs = {
+          server = mkOption {
+            type = types.str;
+            default = "127.0.0.1";
+            description = lib.mdDoc ''
+              The NFS server to connect to. Can be either an IPv4 address or an FQDN.
+            '';
+            example = "192.168.178.1";
+          };
+          directory = mkOption {
+            type = types.path;
+            default = "/";
+            description = lib.mdDoc ''
+              Target directory at the server which should be mounted.
+            '';
+            example = "/mnt/example";
+          };
+        };
         server = {
           address = mkOption {
             type = types.str;
@@ -106,10 +124,47 @@ with lib;
         };
       };
     };
-    systemd.services.k3s = {
-      path = [ pkgs.ipset pkgs.nfs-utils ];
-      wants = [ "containerd.service" ];
-      after = [ "containerd.service" ];
+    systemd.services = {
+      k3s = {
+        path = [ pkgs.ipset pkgs.nfs-utils ];
+        wants = [ "containerd.service" ];
+        after = [ "containerd.service" ];
+      };
+      k3s-nfs-provisioner = {
+        enable = true;
+        description = "Provisioner for k3s NFS storage.";
+        restartIfChanged = true;
+        requiredBy = [ "k3s.service" ];
+        preStart = ''
+          ${pkgs.coreutils-full}/bin/printf "%s\n" \
+            "apiVersion: helm.cattle.io/v1" \
+            "kind: HelmChart" \
+            "metadata:" \
+            "  name: nfs" \
+            "  namespace: kube-system" \
+            "spec:" \
+            "  chart: csi-driver-nfs" \
+            "  repo: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts" \
+            "  targetNamespace: kube-system" \
+            "---" \
+            "apiVersion: storage.k8s.io/v1" \
+            "kind: StorageClass" \
+            "metadata:" \
+            "  name: nfs-csi" \
+            "provisioner: nfs.csi.k8s.io" \
+            "parameters:" \
+            "  server: ${config.senpro-it.k3s-cluster.nfs.server}" \
+            "  share: ${config.senpro-it.k3s-cluster.nfs.directory}" \
+            "reclaimPolicy: Delete" \
+            "volumeBindingMode: Immediate" \
+            "mountOptions:" \
+            "  - nfsvers=4.1" > /var/lib/rancher/k3s/server/manifests/nfs.yaml
+        '';
+        postStop = ''
+          ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/nfs.yaml
+        '';
+        serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-nfs-provisioner is up & running'; sleep 1h; done"''; };
+      };
     };
   });
 }
