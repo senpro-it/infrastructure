@@ -107,7 +107,7 @@ with lib;
       };
     };
     systemd.services.k3s = {
-      path = [ pkgs.ipset ];
+      path = [ pkgs.ipset pkgs.nfs-utils ];
       wants = [ "containerd.service" ];
       after = [ "containerd.service" ];
     };
