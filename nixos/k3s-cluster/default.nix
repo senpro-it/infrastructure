@@ -48,6 +48,15 @@ with lib;
             - `server.address` is required.
           '';
         };
+        metallb = {
+          addressRange = mkOption {
+            type = types.str;
+            description = lib.mdDoc ''
+              IP range which MetalLB should use to advertise services.
+            '';
+            example = "192.168.178.20-192.168.178.40";
+          };
+        };
         nfs = {
           server = mkOption {
             type = types.str;
@@ -109,7 +118,7 @@ with lib;
       clusterInit = config.senpro-it.k3s-cluster.init;
       serverAddr = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.address}" else "";
       token = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.token}" else "";
-      extraFlags = if config.senpro-it.k3s-cluster.role == "server" then "--flannel-backend=host-gw --container-runtime-endpoint unix:///run/containerd/containerd.sock" else "";
+      extraFlags = if config.senpro-it.k3s-cluster.role == "server" then "--flannel-backend=host-gw --disable=servicelb --container-runtime-endpoint unix:///run/containerd/containerd.sock" else "";
     };
     virtualisation.containerd = {
       enable = true;
@@ -129,6 +138,55 @@ with lib;
         path = [ pkgs.ipset pkgs.nfs-utils ];
         wants = [ "containerd.service" ];
         after = [ "containerd.service" ];
+      };
+      k3s-metallb-provisioner = {
+        enable = true;
+        description = "Provisioner for k3s MetalLB load balancer.";
+        restartIfChanged = true;
+        requiredBy = [ "k3s.service" ];
+        preStart = ''
+          ${pkgs.coreutils-full}/bin/printf "%s\n" \
+            "apiVersion: v1" \
+            "kind: Namespace" \
+            "metadata:" \
+            "  labels:" \
+            "    pod-security.kubernetes.io/audit: privileged" \
+            "    pod-security.kubernetes.io/enforce: privileged" \
+            "    pod-security.kubernetes.io/warn: privileged" \
+            "  name: metallb-system" \
+            "---" \
+            "apiVersion: helm.cattle.io/v1" \
+            "kind: HelmChart" \
+            "metadata:" \
+            "  name: metallb" \
+            "  namespace: metallb-system" \
+            "spec:" \
+            "  chart: metallb" \
+            "  repo: https://metallb.github.io/metallb" \
+            "  targetNamespace: metallb-system" \
+            "---" \
+            "apiVersion: metallb.io/v1beta1" \
+            "kind: IPAddressPool" \
+            "metadata:" \
+            "  name: default-pool" \
+            "  namespace: metallb-system" \
+            "spec:" \
+            "  addresses:" \
+            "  - ${config.senpro-it.k3s-cluster.metallb.addressRange}" \
+            "---" \
+            "apiVersion: metallb.io/v1beta1" \
+            "kind: L2Advertisement" \
+            "metadata:" \
+            "  name: default" \
+            "  namespace: metallb-system" \
+            "spec:" \
+            "  ipAddressPools:" \
+            "  - default-pool" > /var/lib/rancher/k3s/server/manifests/metallb.yaml
+        '';
+        postStop = ''
+          ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/metallb.yaml
+        '';
+        serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-metallb-provisioner is up & running'; sleep 1d; done"''; };
       };
       k3s-nfs-provisioner = {
         enable = true;
@@ -163,7 +221,7 @@ with lib;
         postStop = ''
           ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/nfs.yaml
         '';
-        serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-nfs-provisioner is up & running'; sleep 1h; done"''; };
+        serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-nfs-provisioner is up & running'; sleep 1d; done"''; };
       };
     };
   });
