@@ -107,6 +107,37 @@ with lib;
             '';
             example = "192.168.178.20";
           };
+          certResolver = {
+            letsEncrypt = {
+              dnsChallenge = {
+                provider = mkOption {
+                  type = types.str;
+                  description = lib.mdDoc ''
+                    Identifier of the DNS provider. See [ACME provider](https://doc.traefik.io/traefik/https/acme/#providers) for further information.
+                  '';
+                  example = "hostingde";
+                };
+                environment = {
+                  hostingde = {
+                    apiKey = mkOption {
+                      type = types.str;
+                      default = "";
+                      description = lib.mdDoc ''
+                        API key for the hosting.de API to generate SSL certificates using the Traefik dnsChallenge.
+                      '';
+                    };
+                    zoneName = mkOption {
+                      type = types.str;
+                      default = "";
+                      description = lib.mdDoc ''
+                        Zone name for the Traefik dnsChallenge. API key must have sufficient rights for this zone..
+                      '';
+                    };
+                  };
+                };
+              };
+            };
+          };
           services = {
             dashboard = {
               hostName = mkOption {
@@ -250,6 +281,21 @@ with lib;
         requiredBy = [ "k3s.service" ];
         preStart = ''
           ${pkgs.coreutils-full}/bin/printf "%s\n" \
+            "apiVersion: v1" \
+            "kind: PersistentVolumeClaim" \
+            "" \
+            "metadata:" \
+            "  name: traefik" \
+            "  namespace: kube-system" \
+            "spec:" \
+            "  storageClassName: nfs-csi" \
+            "  accessModes:" \
+            "  - ReadWriteMany" \
+            "  - ReadWriteOnce" \
+            "  resources:" \
+            "    requests:" \
+            "      storage: 128Mi" \
+            "---" \
             "apiVersion: helm.cattle.io/v1" \
             "kind: HelmChartConfig" \
             "metadata:" \
@@ -268,10 +314,31 @@ with lib;
             "    deployment:" \
             "      enabled: true" \
             "      replicas: 2" \
+            "      initContainers:" \
+            "        - name: volume-permissions" \
+            "          image: busybox:latest" \
+            "          command: [\"sh\", \"-c\", \"touch /data/acme.json; chmod -v 600 /data/acme.json\"]" \
+            "          securityContext:" \
+            "            runAsNonRoot: true" \
+            "            runAsGroup: 65532" \
+            "            runAsUser: 65532" \
+            "          volumeMounts:" \
+            "            - name: data" \
+            "              mountPath: /data" \
             "" \
             "    ports:" \
             "      web:" \
             "        redirectTo: websecure" \
+            "      websecure:" \
+            "        tls:" \
+            "          certResolver: \"letsEncrypt\"" \
+            "" \
+            "    persistence:" \
+            "      enabled: true" \
+            "      existingClaim: traefik" \
+            "      accessMode: ReadWriteOnce" \
+            "      size: 128Mi" \
+            "      path: /data" \
             "" \
             "    providers:" \
             "      kubernetesCRD:" \
@@ -292,13 +359,30 @@ with lib;
             "      spec:" \
             "        loadBalancerIP: \"${config.senpro-it.k3s-cluster.traefik.loadBalancerIP}\"" \
             "" \
+            "    certResolvers:" \
+            "      letsEncrypt:" \
+            "        dnsChallenge:" \
+            "          provider: ${config.senpro-it.k3s-cluster.traefik.certResolver.letsEncrypt.dnsChallenge.provider}" \
+            "          delayBeforeCheck: 30" \
+            "          resolvers:" \
+            "            - 1.1.1.1" \
+            "            - 8.8.8.8" \
+            "        storage: /data/acme.json" \
+            "" \
             "    updateStrategy:" \
             "      type: RollingUpdate" \
             "      rollingUpdate:" \
             "        maxUnavailable: 1" \
             "" \
+            "    env:" \
+            "      - name: HOSTINGDE_API_KEY" \
+            "        value: ${config.senpro-it.k3s-cluster.traefik.certResolver.letsEncrypt.dnsChallenge.environment.hostingde.apiKey}" \
+            "      - name: HOSTINGDE_ZONE_NAME" \
+            "        value: ${config.senpro-it.k3s-cluster.traefik.certResolver.letsEncrypt.dnsChallenge.environment.hostingde.zoneName}" \
+            "" \
             "    additionalArguments:" \
             "      - --serversTransport.insecureSkipVerify=true" \
+            "      - --providers.kubernetescrd.allowCrossNamespace=true" \
             "" \
             "    # See https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml for more examples" \
             "    # The deployment.kind=DaemonSet and hostNetwork=true is to get real ip and x-forwarded for," \
