@@ -1,6 +1,6 @@
 # 0.0.5 (`2023-05-31`)
 - add: MetalLB as load balancer
-- add: don't use native Traefik Ingress
+- add: configure native Traefik Ingress Controller
 
 # 0.0.4 (`2023-05-31`)
 - add: nfs-utils for k3s-cluster

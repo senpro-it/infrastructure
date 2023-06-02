@@ -99,6 +99,26 @@ with lib;
             '';
           };
         };
+        traefik = {
+          loadBalancerIP = mkOption {
+            type = types.str;
+            description = lib.mdDoc ''
+              IPv4 address of the Load Balancer for the Traefik Ingress Controller.
+            '';
+            example = "192.168.178.20";
+          };
+          services = {
+            dashboard = {
+              hostName = mkOption {
+                type = types.str;
+                description = lib.mdDoc ''
+                  Hostname to use for the Traefik dashboard. It should be FQDN.
+                '';
+                example = "dashboard.traefik.local";
+              };
+            };
+          };
+        };
       };
     };
   };
@@ -222,6 +242,92 @@ with lib;
           ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/nfs.yaml
         '';
         serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-nfs-provisioner is up & running'; sleep 1d; done"''; };
+      };
+      k3s-traefik-provisioner = {
+        enable = true;
+        description = "Provisioner for k3s Traefik Ingress Controller.";
+        restartIfChanged = true;
+        requiredBy = [ "k3s.service" ];
+        preStart = ''
+          ${pkgs.coreutils-full}/bin/printf "%s\n" \
+            "apiVersion: helm.cattle.io/v1" \
+            "kind: HelmChartConfig" \
+            "metadata:" \
+            "  name: traefik" \
+            "  namespace: kube-system" \
+            "spec:" \
+            "  valuesContent: |-" \
+            "    logs:" \
+            "      level: INFO" \
+            "      access:" \
+            "        enabled: true" \
+            "" \
+            "    dashboard:" \
+            "      enabled: true" \
+            "" \
+            "    deployment:" \
+            "      enabled: true" \
+            "      replicas: 2" \
+            "" \
+            "    ports:" \
+            "      web:" \
+            "        redirectTo: websecure" \
+            "" \
+            "    providers:" \
+            "      kubernetesCRD:" \
+            "        enabled: true" \
+            "        namespaces: []" \
+            "    kubernetesIngress:" \
+            "      enabled: true" \
+            "      namespaces: []" \
+            "      publishedService:" \
+            "        enabled: true" \
+            "" \
+            "    rbac:" \
+            "      enabled: true" \
+            "" \
+            "    service:" \
+            "      enabled: true" \
+            "      type: LoadBalancer" \
+            "      spec:" \
+            "        loadBalancerIP: \"${config.senpro-it.k3s-cluster.traefik.loadBalancerIP}\"" \
+            "" \
+            "    updateStrategy:" \
+            "      type: RollingUpdate" \
+            "      rollingUpdate:" \
+            "        maxUnavailable: 1" \
+            "" \
+            "    additionalArguments:" \
+            "      - --serversTransport.insecureSkipVerify=true" \
+            "" \
+            "    # See https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml for more examples" \
+            "    # The deployment.kind=DaemonSet and hostNetwork=true is to get real ip and x-forwarded for," \
+            "    # and can be omitted if this is not needed." \
+            "" \
+            "    # The updateStrategy settings are required for the latest traefik helm version when using hostNetwork." \
+            "    # see more here: https://github.com/traefik/traefik-helm-chart/blob/v20.8.0/traefik/templates/daemonset.yaml#L12-L14" \
+            "    # but this version not yet supported by k3s, so leaving it commented out for now." \
+            "    # The config above has been tested to work with latest stable k3s (v1.25.4+k3s1)." \
+            "---" \
+            "apiVersion: traefik.containo.us/v1alpha1" \
+            "kind: IngressRoute" \
+            "metadata:" \
+            "  name: traefik-dashboard" \
+            "  namespace: kube-system" \
+            "spec:" \
+            "  entryPoints:" \
+            "    - websecure" \
+            "  routes:" \
+            "    - match: Host(\`${config.senpro-it.k3s-cluster.traefik.services.dashboard.hostName}\`) && (PathPrefix(\`/dashboard\`) || PathPrefix(\`/api\`))" \
+            "      kind: Rule" \
+            "      services:" \
+            "      - name: api@internal" \
+            "        kind: TraefikService" > /var/lib/rancher/k3s/server/manifests/ingress-controller.yaml 
+        '';
+        postStop = ''
+          ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/ingress-controller.yaml
+        '';
+        serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-traefik-provisioner is up & running'; sleep 1d; done"''; };
       };
     };
   });
