@@ -233,7 +233,7 @@ with lib;
             "parameters:" \
             "  server: ${config.senpro-it.k3s-cluster.nfs.server}" \
             "  share: ${config.senpro-it.k3s-cluster.nfs.directory}" \
-            "reclaimPolicy: Delete" \
+            "reclaimPolicy: Retain" \
             "volumeBindingMode: Immediate" \
             "mountOptions:" \
             "  - nfsvers=4.1" > /var/lib/rancher/k3s/server/manifests/nfs.yaml

@@ -1,3 +1,6 @@
+# 0.0.6 (`2023-06-05`)
+- fix: use Retain reclaim policy for NFS storage
+
 # 0.0.5 (`2023-05-31`)
 - add: MetalLB as load balancer
 - add: configure native Traefik Ingress Controller
