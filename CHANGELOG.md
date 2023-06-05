@@ -1,3 +1,6 @@
+# 0.0.7 (`2023-06-05`)
+- add: deployment of the Heimdall dashboard
+
 # 0.0.6 (`2023-06-05`)
 - fix: use Retain reclaim policy for NFS storage
 - add: dnsChallenge via Let's Encrypt for Traefik

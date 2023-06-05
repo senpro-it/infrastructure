@@ -3,6 +3,7 @@
 with lib;
 
 {
+  imports = [ ./deployments ];
   options = {
     senpro-it = {
       k3s-cluster = {
