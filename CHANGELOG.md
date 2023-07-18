@@ -1,3 +1,7 @@
+# 0.0.8 (`2023-06-05`)
+- rev: deployment of the Heimdall dashboard
+- del: move Traefik out of provisioning
+
 # 0.0.7 (`2023-06-05`)
 - add: deployment of the Heimdall dashboard
 
