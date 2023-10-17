@@ -90,7 +90,7 @@ with lib;
         randomizedDelaySec = "30min";
       };
       copySystemConfiguration = true;
-      stateVersion = "22.11";
+      stateVersion = "23.05";
     };
   };
 }
