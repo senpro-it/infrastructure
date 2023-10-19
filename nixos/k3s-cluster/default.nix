@@ -124,7 +124,7 @@ with lib;
       clusterInit = config.senpro-it.k3s-cluster.init;
       serverAddr = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.address}" else "";
       token = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.token}" else "";
-      extraFlags = if config.senpro-it.k3s-cluster.role == "server" then "--flannel-backend=host-gw --disable=servicelb --container-runtime-endpoint unix:///run/containerd/containerd.sock" else "";
+      extraFlags = if config.senpro-it.k3s-cluster.role == "server" then "--flannel-backend=host-gw --disable=servicelb --container-runtime-endpoint unix:///run/containerd/containerd.sock --kube-controller-manager-arg node-monitor-period=5s --kube-controller-manager-arg node-monitor-grace-period=20s --kube-controller-manager-arg pod-eviction-timeout=40s" else "";
     };
     virtualisation.containerd = {
       enable = true;
