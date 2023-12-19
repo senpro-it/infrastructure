@@ -42,7 +42,7 @@ with lib;
       keyMap = "de";
     };
     environment = {
-      systemPackages = with pkgs; [ exa git ];
+      systemPackages = with pkgs; [ git ];
     };
     i18n = {
       defaultLocale = "de_DE.UTF-8";
