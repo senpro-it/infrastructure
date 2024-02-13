@@ -49,7 +49,7 @@ with lib;
           '';
         };
         metallb = {
-          enabled = mkEnableOption ''
+          enable = mkEnableOption ''
             Should the MetalLB load balancer be used?
           '';
           addressRange = mkOption {
