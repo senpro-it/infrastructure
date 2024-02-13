@@ -244,6 +244,6 @@ with lib;
           serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-nfs-provisioner is up & running'; sleep 1d; done"''; };
         };
       })
-    ]
+    ];
   });
 }
