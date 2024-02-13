@@ -155,7 +155,7 @@ with lib;
         };
       }
 
-      (lib.mKif config.senpro-it.k3s-cluster.metallb.enable {
+      (lib.mkIf config.senpro-it.k3s-cluster.metallb.enable {
         k3s-metallb-provisioner = {
           enable = true;
           description = "Provisioner for k3s MetalLB load balancer.";
