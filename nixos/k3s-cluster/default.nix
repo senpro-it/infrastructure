@@ -49,6 +49,9 @@ with lib;
           '';
         };
         metallb = {
+          enabled = mkEnableOption ''
+            Should the MetalLB load balancer be used?
+          '';
           addressRange = mkOption {
             type = types.str;
             description = lib.mdDoc ''
@@ -58,6 +61,9 @@ with lib;
           };
         };
         nfs = {
+          enable = mkEnableOption ''
+            Should the cluster be configured to use an NFS storage?
+          '';
           server = mkOption {
             type = types.str;
             default = "127.0.0.1";
@@ -102,6 +108,7 @@ with lib;
       };
     };
   };
+
   config = (lib.mkIf config.senpro-it.k3s-cluster.enable {
     environment.systemPackages = with pkgs; [
       kubectl
@@ -139,96 +146,104 @@ with lib;
         };
       };
     };
-    systemd.services = {
-      k3s = {
-        path = [ pkgs.ipset pkgs.nfs-utils ];
-        wants = [ "containerd.service" ];
-        after = [ "containerd.service" ];
-      };
-      k3s-metallb-provisioner = {
-        enable = true;
-        description = "Provisioner for k3s MetalLB load balancer.";
-        restartIfChanged = true;
-        requiredBy = [ "k3s.service" ];
-        preStart = ''
-          ${pkgs.coreutils-full}/bin/printf "%s\n" \
-            "apiVersion: v1" \
-            "kind: Namespace" \
-            "metadata:" \
-            "  labels:" \
-            "    pod-security.kubernetes.io/audit: privileged" \
-            "    pod-security.kubernetes.io/enforce: privileged" \
-            "    pod-security.kubernetes.io/warn: privileged" \
-            "  name: metallb-system" \
-            "---" \
-            "apiVersion: helm.cattle.io/v1" \
-            "kind: HelmChart" \
-            "metadata:" \
-            "  name: metallb" \
-            "  namespace: metallb-system" \
-            "spec:" \
-            "  chart: metallb" \
-            "  repo: https://metallb.github.io/metallb" \
-            "  targetNamespace: metallb-system" \
-            "---" \
-            "apiVersion: metallb.io/v1beta1" \
-            "kind: IPAddressPool" \
-            "metadata:" \
-            "  name: default-pool" \
-            "  namespace: metallb-system" \
-            "spec:" \
-            "  addresses:" \
-            "  - ${config.senpro-it.k3s-cluster.metallb.addressRange}" \
-            "---" \
-            "apiVersion: metallb.io/v1beta1" \
-            "kind: L2Advertisement" \
-            "metadata:" \
-            "  name: default" \
-            "  namespace: metallb-system" \
-            "spec:" \
-            "  ipAddressPools:" \
-            "  - default-pool" > /var/lib/rancher/k3s/server/manifests/metallb.yaml
-        '';
-        postStop = ''
-          ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/metallb.yaml
-        '';
-        serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-metallb-provisioner is up & running'; sleep 1d; done"''; };
-      };
-      k3s-nfs-provisioner = {
-        enable = true;
-        description = "Provisioner for k3s NFS storage.";
-        restartIfChanged = true;
-        requiredBy = [ "k3s.service" ];
-        preStart = ''
-          ${pkgs.coreutils-full}/bin/printf "%s\n" \
-            "apiVersion: helm.cattle.io/v1" \
-            "kind: HelmChart" \
-            "metadata:" \
-            "  name: nfs" \
-            "  namespace: kube-system" \
-            "spec:" \
-            "  chart: csi-driver-nfs" \
-            "  repo: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts" \
-            "  targetNamespace: kube-system" \
-            "---" \
-            "apiVersion: storage.k8s.io/v1" \
-            "kind: StorageClass" \
-            "metadata:" \
-            "  name: nfs-csi" \
-            "provisioner: nfs.csi.k8s.io" \
-            "parameters:" \
-            "  server: ${config.senpro-it.k3s-cluster.nfs.server}" \
-            "  share: ${config.senpro-it.k3s-cluster.nfs.directory}" \
-            "reclaimPolicy: Retain" \
-            "volumeBindingMode: Immediate" \
-            "mountOptions:" \
-            "  - nfsvers=4.1" > /var/lib/rancher/k3s/server/manifests/nfs.yaml
-        '';
-        postStop = ''
-          ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/nfs.yaml
-        '';
-        serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-nfs-provisioner is up & running'; sleep 1d; done"''; };
-      };
-    };
+    systemd.services = lib.mkMerge [
+      {
+        k3s = {
+          path = [ pkgs.ipset pkgs.nfs-utils ];
+          wants = [ "containerd.service" ];
+          after = [ "containerd.service" ];
+        }
+      }
+
+      (lib.mKif config.senpro-it.k3s-cluster.metallb.enable {
+        k3s-metallb-provisioner = {
+          enable = true;
+          description = "Provisioner for k3s MetalLB load balancer.";
+          restartIfChanged = true;
+          requiredBy = [ "k3s.service" ];
+          preStart = ''
+            ${pkgs.coreutils-full}/bin/printf "%s\n" \
+              "apiVersion: v1" \
+              "kind: Namespace" \
+              "metadata:" \
+              "  labels:" \
+              "    pod-security.kubernetes.io/audit: privileged" \
+              "    pod-security.kubernetes.io/enforce: privileged" \
+              "    pod-security.kubernetes.io/warn: privileged" \
+              "  name: metallb-system" \
+              "---" \
+              "apiVersion: helm.cattle.io/v1" \
+              "kind: HelmChart" \
+              "metadata:" \
+              "  name: metallb" \
+              "  namespace: metallb-system" \
+              "spec:" \
+              "  chart: metallb" \
+              "  repo: https://metallb.github.io/metallb" \
+              "  targetNamespace: metallb-system" \
+              "---" \
+              "apiVersion: metallb.io/v1beta1" \
+              "kind: IPAddressPool" \
+              "metadata:" \
+              "  name: default-pool" \
+              "  namespace: metallb-system" \
+              "spec:" \
+              "  addresses:" \
+              "  - ${config.senpro-it.k3s-cluster.metallb.addressRange}" \
+              "---" \
+              "apiVersion: metallb.io/v1beta1" \
+              "kind: L2Advertisement" \
+              "metadata:" \
+              "  name: default" \
+              "  namespace: metallb-system" \
+              "spec:" \
+              "  ipAddressPools:" \
+              "  - default-pool" > /var/lib/rancher/k3s/server/manifests/metallb.yaml
+          '';
+          postStop = ''
+            ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/metallb.yaml
+          '';
+          serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-metallb-provisioner is up & running'; sleep 1d; done"''; };
+        };
+      })
+
+      (lib.mkIf config.senpro-it.k3s-cluster.nfs.enable {
+        k3s-nfs-provisioner = {
+          enable = true;
+          description = "Provisioner for k3s NFS storage.";
+          restartIfChanged = true;
+          requiredBy = [ "k3s.service" ];
+          preStart = ''
+            ${pkgs.coreutils-full}/bin/printf "%s\n" \
+              "apiVersion: helm.cattle.io/v1" \
+              "kind: HelmChart" \
+              "metadata:" \
+              "  name: nfs" \
+              "  namespace: kube-system" \
+              "spec:" \
+              "  chart: csi-driver-nfs" \
+              "  repo: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts" \
+              "  targetNamespace: kube-system" \
+              "---" \
+              "apiVersion: storage.k8s.io/v1" \
+              "kind: StorageClass" \
+              "metadata:" \
+              "  name: nfs-csi" \
+              "provisioner: nfs.csi.k8s.io" \
+              "parameters:" \
+              "  server: ${config.senpro-it.k3s-cluster.nfs.server}" \
+              "  share: ${config.senpro-it.k3s-cluster.nfs.directory}" \
+              "reclaimPolicy: Retain" \
+              "volumeBindingMode: Immediate" \
+              "mountOptions:" \
+              "  - nfsvers=4.1" > /var/lib/rancher/k3s/server/manifests/nfs.yaml
+          '';
+          postStop = ''
+            ${pkgs.coreutils-full}/bin/rm -f /var/lib/rancher/k3s/server/manifests/nfs.yaml
+          '';
+          serviceConfig = { ExecStart = ''${pkgs.bashInteractive}/bin/bash -c "while true; do echo 'k3s-nfs-provisioner is up & running'; sleep 1d; done"''; };
+        };
+      })
+    ]
   });
 }
