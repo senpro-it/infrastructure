@@ -152,7 +152,7 @@ with lib;
           path = [ pkgs.ipset pkgs.nfs-utils ];
           wants = [ "containerd.service" ];
           after = [ "containerd.service" ];
-        }
+        };
       }
 
       (lib.mKif config.senpro-it.k3s-cluster.metallb.enable {
