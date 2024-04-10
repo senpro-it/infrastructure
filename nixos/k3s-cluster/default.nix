@@ -145,13 +145,12 @@ with lib;
         if config.senpro-it.k3s-cluster.role == "server" 
         then (lib.concatStringsSep " " [
           "--flannel-backend=host-gw"
-          "--disable=servicelb"
           "--container-runtime-endpoint unix:///run/containerd/containerd.sock"
           "--kube-controller-manager-arg node-monitor-period=5s"
           "--kube-controller-manager-arg node-monitor-grace-period=20s"
           (
             if config.senpro-it.k3s-cluster.metallb.enable
-            then ""
+            then "--disable=servicelb"
             else "--node-external-ip ${config.senpro-it.k3s-cluster.nodeExternalIp}"
           )
         ])
