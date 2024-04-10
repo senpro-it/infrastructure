@@ -60,6 +60,14 @@ with lib;
             example = "192.168.178.20-192.168.178.40";
           };
         };
+        nodeExternalIp = mkOption {
+          default = "";
+          type = types.str;
+          description = lib.mkDoc ''
+            Use this when MetalLB is disabled to specify a dedicated
+            external IP. You must pick this manually.
+          '';
+        };
         nfs = {
           enable = mkEnableOption ''
             Should the cluster be configured to use an NFS storage?
@@ -118,7 +126,9 @@ with lib;
     };
     networking = {
       firewall = {
-        allowedTCPPorts = if config.senpro-it.k3s-cluster.role == "server" then [ 6443 10250 ] else [ 10250 ];
+        allowedTCPPorts 
+          = if config.senpro-it.k3s-cluster.role == "server" then [ 6443 10250 ] else [ 10250 ]
+          + (if !config.senpro-it.k3s-cluster.metallb.enable then [ 80 443 ] else []);
         allowedTCPPortRanges = mkIf (config.senpro-it.k3s-cluster.role == "server") [
           { from = 2379; to = 2380; }
         ];
@@ -131,7 +141,21 @@ with lib;
       clusterInit = config.senpro-it.k3s-cluster.init;
       serverAddr = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.address}" else "";
       token = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.token}" else "";
-      extraFlags = if config.senpro-it.k3s-cluster.role == "server" then "--flannel-backend=host-gw --disable=servicelb --container-runtime-endpoint unix:///run/containerd/containerd.sock --kube-controller-manager-arg node-monitor-period=5s --kube-controller-manager-arg node-monitor-grace-period=20s" else "";
+      extraFlags =
+        if config.senpro-it.k3s-cluster.role == "server" 
+        then (lib.concatStringsSep " " [
+          "--flannel-backend=host-gw"
+          "--disable=servicelb"
+          "--container-runtime-endpoint unix:///run/containerd/containerd.sock"
+          "--kube-controller-manager-arg node-monitor-period=5s"
+          "--kube-controller-manager-arg node-monitor-grace-period=20s"
+          (
+            if config.senpro-it.k3s-cluster.metallb.enable
+            then ""
+            else "--node-external-ip ${config.senpro-it.k3s-cluster.nodeExternalIp}"
+          )
+        ])
+        else "";
     };
     virtualisation.containerd = {
       enable = true;
