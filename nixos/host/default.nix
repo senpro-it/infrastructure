@@ -10,7 +10,7 @@ with lib;
           type = types.strMatching
             "^$|^[[:alnum:]]([[:alnum:]_-]{0,61}[[:alnum:]])?$";
           default = "nixos";
-          description = lib.mdDoc ''
+          description = ''
             The name of the machine. Leave it empty if you want to obtain it from a
             DHCP server (if using DHCP). The hostname must be a valid DNS label (see
             RFC 1035 section 2.3.1: "Preferred name syntax", RFC 1123 section 2.1:

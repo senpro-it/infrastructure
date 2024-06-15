@@ -12,7 +12,7 @@ with lib;
         init = mkOption {
           type = types.bool;
           default = false;
-          description = lib.mdDoc ''
+          description = ''
             Initialize HA cluster using an embedded etcd datastore.
 
             If this option is `false` and `role` is `server`
@@ -33,7 +33,7 @@ with lib;
         role = mkOption {
           type = types.enum [ "server" "agent" ];
           default = "server";
-          description = lib.mdDoc ''
+          description = ''
             Whether k3s should run as a server or agent.
 
             If it's a server:
@@ -54,7 +54,7 @@ with lib;
           '';
           addressRange = mkOption {
             type = types.str;
-            description = lib.mdDoc ''
+            description = ''
               IP range which MetalLB should use to advertise services.
             '';
             example = "192.168.178.20-192.168.178.40";
@@ -75,7 +75,7 @@ with lib;
           server = mkOption {
             type = types.str;
             default = "127.0.0.1";
-            description = lib.mdDoc ''
+            description = ''
               The NFS server to connect to. Can be either an IPv4 address or an FQDN.
             '';
             example = "192.168.178.1";
@@ -83,7 +83,7 @@ with lib;
           directory = mkOption {
             type = types.path;
             default = "/";
-            description = lib.mdDoc ''
+            description = ''
               Target directory at the server which should be mounted.
             '';
             example = "/mnt/example";
@@ -93,7 +93,7 @@ with lib;
           address = mkOption {
             type = types.str;
             default = "";
-            description = lib.mdDoc ''
+            description = ''
               The k3s server to connect to.
 
               Servers and agents need to communicate each other. Read
@@ -105,7 +105,7 @@ with lib;
           token = mkOption {
             type = types.str;
             default = "";
-            description = lib.mdDoc ''
+            description = ''
               The k3s token to use when connecting to a server.
 
               WARNING: This option will expose store your token unencrypted world-readable in the nix store.
@@ -128,7 +128,7 @@ with lib;
       firewall = {
         allowedTCPPorts 
           = if config.senpro-it.k3s-cluster.role == "server" then [ 6443 10250 ] else [ 10250 ]
-          + (if !config.senpro-it.k3s-cluster.metallb.enable then [ 80 443 ] else []);
+          + (if !config.senpro-it.k3s-cluster.metallb.enable then [ 80 443 ] else [ 7946 ]);
         allowedTCPPortRanges = mkIf (config.senpro-it.k3s-cluster.role == "server") [
           { from = 2379; to = 2380; }
         ];
