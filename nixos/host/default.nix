@@ -86,7 +86,7 @@ with lib;
           lower = "21:00";
           upper = "23:30";
         };
-        allowReboot = true;
+        allowReboot = false;
         randomizedDelaySec = "30min";
       };
       copySystemConfiguration = true;
