@@ -113,6 +113,19 @@ with lib;
             '';
           };
         };
+        extraFlags = {
+          type = types.listOf types.str;
+          default = [];
+          description = ''
+            List of additional arguments to be passed to k3s at start, appeneded at the end.
+            This can be used to sneak in customizations not covered by this configuration.
+            An example is to use --bind-adress=0.0.0.0 to change how the Kubelet listens for
+            incomming traffic, making it accessible to the entire network.
+
+            Copy /etc/rancher/k3s/k3s.yaml into your local .kube folder as "config" to access a host
+            that has been exposed this way.
+          '';
+        };
       };
     };
   };
@@ -142,19 +155,21 @@ with lib;
       serverAddr = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.address}" else "";
       token = if config.senpro-it.k3s-cluster.init == false then "${config.senpro-it.k3s-cluster.server.token}" else "";
       extraFlags =
-        if config.senpro-it.k3s-cluster.role == "server" 
-        then (lib.concatStringsSep " " [
-          "--flannel-backend=host-gw"
-          "--container-runtime-endpoint unix:///run/containerd/containerd.sock"
-          "--kube-controller-manager-arg node-monitor-period=5s"
-          "--kube-controller-manager-arg node-monitor-grace-period=20s"
-          (
-            if config.senpro-it.k3s-cluster.metallb.enable
-            then "--disable=servicelb"
-            else "--node-external-ip ${config.senpro-it.k3s-cluster.nodeExternalIp}"
-          )
-        ])
-        else "";
+        (
+          if config.senpro-it.k3s-cluster.role == "server" 
+          then (lib.concatStringsSep " " [
+            "--flannel-backend=host-gw"
+            "--container-runtime-endpoint unix:///run/containerd/containerd.sock"
+            "--kube-controller-manager-arg node-monitor-period=5s"
+            "--kube-controller-manager-arg node-monitor-grace-period=20s"
+            (
+              if config.senpro-it.k3s-cluster.metallb.enable
+              then "--disable=servicelb"
+              else "--node-external-ip ${config.senpro-it.k3s-cluster.nodeExternalIp}"
+            )
+          ])
+          else ""
+        ) + (lib.concatStringsSep " " config.senpro-it.k3s-cluster.extraFlags);
     };
     virtualisation.containerd = {
       enable = true;
