@@ -113,7 +113,7 @@ with lib;
             '';
           };
         };
-        extraFlags = {
+        extraFlags = mkOption {
           type = types.listOf types.str;
           default = [];
           description = ''
