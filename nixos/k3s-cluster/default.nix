@@ -169,7 +169,7 @@ with lib;
             )
           ])
           else ""
-        ) + (lib.concatStringsSep " " config.senpro-it.k3s-cluster.extraFlags);
+        ) + " " + (lib.concatStringsSep " " config.senpro-it.k3s-cluster.extraFlags);
     };
     virtualisation.containerd = {
       enable = true;
