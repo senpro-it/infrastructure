@@ -42,7 +42,7 @@ with lib;
       keyMap = "de";
     };
     environment = {
-      systemPackages = with pkgs; [ git ];
+      systemPackages = with pkgs; [ git flow-control nano jq file htop ];
     };
     i18n = {
       defaultLocale = "de_DE.UTF-8";
@@ -63,13 +63,7 @@ with lib;
       mutableUsers = false;
       defaultUserShell = pkgs.fish;
     };
-    nix = {
-      gc = {
-        automatic = true;
-        dates = "Sat, 22:00";
-        randomizedDelaySec = "30min";
-      };
-    };
+    nix.gc.automatic = false;
     services = {
       openssh = {
         enable = true;
@@ -79,16 +73,7 @@ with lib;
       };
     };
     system = {
-      autoUpgrade = {
-        enable = true;
-        dates = "Sun, 21:00";
-        rebootWindow = {
-          lower = "21:00";
-          upper = "23:30";
-        };
-        allowReboot = false;
-        randomizedDelaySec = "30min";
-      };
+      autoUpgrade.enable = false;
       copySystemConfiguration = true;
       stateVersion = "23.11";
     };
