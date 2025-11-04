@@ -63,7 +63,7 @@ with lib;
       mutableUsers = false;
       defaultUserShell = pkgs.fish;
     };
-    nix.gc.automatic = false;
+    nix.gc.automatic = lib.mkDefault false;
     services = {
       openssh = {
         enable = true;
@@ -73,7 +73,7 @@ with lib;
       };
     };
     system = {
-      autoUpgrade.enable = false;
+      autoUpgrade.enable = lib.mkDefault false;
       copySystemConfiguration = true;
       stateVersion = "23.11";
     };
